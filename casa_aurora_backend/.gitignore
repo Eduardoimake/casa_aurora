@@ -1,0 +1,28 @@
+# Ambiente e segredos
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Banco SQLite local
+db.sqlite3
+db.sqlite3-*
+
+# Arquivos gerados e enviados
+/media/
+/staticfiles/
+/coverage
+.coverage
+htmlcov/
+
+# Editores e sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

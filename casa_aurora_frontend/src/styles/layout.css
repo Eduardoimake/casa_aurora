@@ -1,0 +1,145 @@
+.container {
+  width: min(calc(100% - 32px), var(--container-width));
+  margin-inline: auto;
+}
+
+.site-shell {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+main {
+  min-width: 0;
+  flex: 1;
+}
+
+.site-header {
+  position: relative;
+  z-index: 20;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.site-header-inner {
+  display: flex;
+  min-height: 88px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.site-footer {
+  padding-top: 64px;
+  background: var(--color-footer-bg);
+  color: var(--color-footer-text);
+}
+
+.footer-grid {
+  display: grid;
+  gap: 36px;
+}
+
+.footer-brand {
+  margin-bottom: 10px;
+  color: var(--color-footer-text);
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  line-height: 1.2;
+}
+
+.footer-description {
+  max-width: 390px;
+  color: var(--color-footer-muted);
+}
+
+.footer-grid nav {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.footer-grid nav a {
+  min-height: 44px;
+  align-content: center;
+  color: var(--color-footer-text);
+  text-decoration-color: var(--color-footer-muted);
+  text-underline-offset: 4px;
+}
+
+.footer-grid nav a:hover {
+  color: #ffffff;
+}
+
+.footer-bottom {
+  margin-top: 48px;
+  padding-block: 20px;
+  border-top: 1px solid var(--color-footer-border);
+}
+
+.footer-bottom p {
+  margin-bottom: 0;
+  color: var(--color-footer-muted);
+  font-size: 0.86rem;
+}
+
+.section {
+  padding-block: clamp(56px, 8vw, 104px);
+}
+
+.section-alt {
+  background: var(--color-surface-alt);
+}
+
+.section-heading {
+  max-width: 720px;
+  margin-bottom: 32px;
+}
+
+.section-heading h2 {
+  margin-bottom: 12px;
+}
+
+.section-content {
+  min-height: 80px;
+}
+
+.category-grid,
+.product-grid,
+.promotion-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.section-action {
+  margin-top: 32px;
+}
+
+@media (min-width: 640px) {
+  .footer-grid {
+    grid-template-columns: minmax(0, 1.6fr) minmax(180px, 0.4fr);
+  }
+
+  .category-grid,
+  .product-grid,
+  .promotion-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 960px) {
+  .category-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

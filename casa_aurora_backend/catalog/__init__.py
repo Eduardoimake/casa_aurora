@@ -1,0 +1,1 @@
+"""Aplicação de catálogo e gestão da Casa Aurora."""
