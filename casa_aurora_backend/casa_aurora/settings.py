@@ -1,20 +1,18 @@
-"""Configurações do backend Casa Aurora.
-
-No desenvolvimento, variáveis podem ser lidas de .env na raiz do projeto.
-Em produção, forneça os valores no ambiente do processo.
-"""
+"""Configurações do backend Casa Aurora."""
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 from django.core.exceptions import ImproperlyConfigured
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_DIST = BASE_DIR.parent / "casa_aurora_frontend" / "dist"
 
 
 def load_dotenv_file(path: Path) -> None:
-    """Carrega pares simples CHAVE=VALOR sem sobrescrever o ambiente."""
+    """Carrega pares CHAVE=VALOR locais sem sobrescrever o ambiente."""
     if not path.is_file():
         return
 
@@ -112,7 +110,6 @@ def env_nonnegative_int(name: str, default: int) -> int:
 
 
 DEBUG = env_bool("DJANGO_DEBUG", False)
-
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "").strip()
 
 if not SECRET_KEY:
@@ -145,6 +142,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -213,16 +211,22 @@ elif DB_ENGINE == "postgresql":
             + ", ".join(missing_db_settings)
         )
 
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": required_db_settings["DB_NAME"],
-            "USER": required_db_settings["DB_USER"],
-            "PASSWORD": required_db_settings["DB_PASSWORD"],
-            "HOST": required_db_settings["DB_HOST"],
-            "PORT": required_db_settings["DB_PORT"],
-        }
+    db_settings = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": required_db_settings["DB_NAME"],
+        "USER": required_db_settings["DB_USER"],
+        "PASSWORD": required_db_settings["DB_PASSWORD"],
+        "HOST": required_db_settings["DB_HOST"],
+        "PORT": required_db_settings["DB_PORT"],
+        "CONN_MAX_AGE": 0,
+        "CONN_HEALTH_CHECKS": True,
+        "DISABLE_SERVER_SIDE_CURSORS": True,
     }
+
+    if not DEBUG:
+        db_settings["OPTIONS"] = {"sslmode": "require"}
+
+    DATABASES = {"default": db_settings}
 else:
     raise ImproperlyConfigured(
         "DB_ENGINE deve ser sqlite ou postgresql."
@@ -258,18 +262,89 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "America/Sao_Paulo"
-
 USE_I18N = True
 USE_TZ = True
-
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+if FRONTEND_DIST.is_dir():
+    STATICFILES_DIRS = [FRONTEND_DIST]
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": (
+            "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
+    },
+}
+
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+R2_ENABLED = env_bool("R2_ENABLED", False)
+
+if R2_ENABLED:
+    required_r2_settings = {
+        "R2_ACCESS_KEY_ID": os.getenv("R2_ACCESS_KEY_ID", "").strip(),
+        "R2_SECRET_ACCESS_KEY": os.getenv(
+            "R2_SECRET_ACCESS_KEY", ""
+        ).strip(),
+        "R2_BUCKET_NAME": os.getenv("R2_BUCKET_NAME", "").strip(),
+        "R2_ENDPOINT_URL": os.getenv("R2_ENDPOINT_URL", "").strip(),
+        "R2_PUBLIC_URL": os.getenv("R2_PUBLIC_URL", "").strip(),
+    }
+
+    missing_r2_settings = [
+        name
+        for name, value in required_r2_settings.items()
+        if not value
+    ]
+
+    if missing_r2_settings:
+        raise ImproperlyConfigured(
+            "Configure as variáveis do R2: "
+            + ", ".join(missing_r2_settings)
+        )
+
+    endpoint = urlparse(required_r2_settings["R2_ENDPOINT_URL"])
+    public_url = urlparse(required_r2_settings["R2_PUBLIC_URL"])
+
+    if endpoint.scheme != "https" or not endpoint.netloc:
+        raise ImproperlyConfigured(
+            "R2_ENDPOINT_URL deve ser uma URL HTTPS válida."
+        )
+
+    if public_url.scheme != "https" or not public_url.netloc:
+        raise ImproperlyConfigured(
+            "R2_PUBLIC_URL deve ser uma URL HTTPS válida."
+        )
+
+    if public_url.path.rstrip("/") or public_url.query or public_url.fragment:
+        raise ImproperlyConfigured(
+            "R2_PUBLIC_URL deve conter apenas a origem HTTPS."
+        )
+
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "access_key": required_r2_settings["R2_ACCESS_KEY_ID"],
+            "secret_key": required_r2_settings["R2_SECRET_ACCESS_KEY"],
+            "bucket_name": required_r2_settings["R2_BUCKET_NAME"],
+            "endpoint_url": required_r2_settings["R2_ENDPOINT_URL"],
+            "region_name": "auto",
+            "custom_domain": public_url.netloc,
+            "url_protocol": "https:",
+            "querystring_auth": False,
+            "file_overwrite": False,
+            "default_acl": None,
+        },
+    }
 
 
 REST_FRAMEWORK = {
@@ -289,19 +364,13 @@ REST_FRAMEWORK = {
     ],
 }
 
-
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
-
 CORS_ALLOW_CREDENTIALS = True
 CORS_URLS_REGEX = r"^/api/v1/.*$"
 
-
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
-
-# O frontend pode usar o token devolvido pelo endpoint de CSRF/login.
-# O cookie de sessão permanece inacessível ao JavaScript.
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = "Lax"
 
@@ -317,10 +386,12 @@ SECURE_HSTS_SECONDS = env_nonnegative_int(
     "DJANGO_SECURE_HSTS_SECONDS",
     0,
 )
+
 SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool(
     "DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS",
     False,
 )
+
 SECURE_HSTS_PRELOAD = env_bool(
     "DJANGO_SECURE_HSTS_PRELOAD",
     False,
@@ -341,7 +412,6 @@ MAX_IMAGE_UPLOAD_MB = env_positive_int(
     5,
 )
 
-# O validador de imagens limitará cada arquivo separadamente.
 DATA_UPLOAD_MAX_MEMORY_SIZE = (
     MAX_IMAGE_UPLOAD_MB * 1024 * 1024 + 1024 * 1024
 )
