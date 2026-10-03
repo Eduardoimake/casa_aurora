@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-set -o errexit
+set -euo pipefail
+
+export VITE_API_BASE_URL=""
 
 cd casa_aurora_frontend
 npm ci
