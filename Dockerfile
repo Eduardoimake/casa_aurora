@@ -10,7 +10,6 @@ RUN npm ci
 
 # Copia o restante do frontend
 COPY casa_aurora_frontend/ ./
-
 RUN npm run build -- --base=/static/
 
 
